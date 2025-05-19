@@ -98,4 +98,173 @@ renders the error information within the AEM web interface. 6. Submission via We
 separate web form, designed for submitting corrections or inquiries: This form is an independent web application. It communicates directly with Salesforce,
 bypassing the AEM system entirely.
 
+### Context Diagram PlantUML:
+
+' =========================
+' C4 Context Diagram: Order Processing Platform (Customer Top-Centered Layout)
+' =========================
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+' !include C4_Component.puml
+LAYOUT_TOP_DOWN()
+
+title Order Processing Platform - Context Diagram (customer centered)
+
+Person(customer, "Customer", "Submits orders and receives error feedback")
+
+System_Ext(externalWebsite, "External Website", "Customer order entry point; performs basic file validation")
+
+System_Boundary(s1, "Order Processing Platform") {
+  Container(orderProcessing, "Order Processing Module", "Microsoft Azure", "Analyzes uploaded documents using AI to detect errors")
+  Container(errorHandling, "Error Handling Module", "Azure Logic Apps & Azure Functions", "Applies validation rules and manages error forwarding")
+  Container(salesforce, "Customer Relation System - Salesforce", "Salesforce", "Manages internal tickets and communicates with customers")
+  Container(aemInterface, "Adobe Experience Management Website", "Adobe Experience Manager", "Provides error visibility and correction submission via token")
+}
+
+' Explicit layout hints
+Rel(customer, externalWebsite, "Submits order with document", "HTTPS")
+Rel_U(externalWebsite, orderProcessing, "Transfers validated document", "HTTPS")
+
+Rel(orderProcessing, errorHandling, "Passes classified error data", "HTTPS/JSON")
+Rel(errorHandling, salesforce, "Sends validation results and tracking token", "HTTPS/REST")
+
+Rel(aemInterface, errorHandling, "Reads error data", "HTTPS/REST")
+Rel(aemInterface, salesforce, "Submits corrections", "HTTPS/REST")
+Rel(customer, aemInterface, "Views errors and submits corrections", "HTTPS")
+Rel(salesforce, customer, "Sends ticket updates", "Email/HTTPS")
+
+@enduml
+
+
+Container Diagramm
+
+' =========================
+' C4 Container Diagram: Order Processing Platform (visually aligned with Azure Service Bus Interface)
+' =========================
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+' !include C4_Component.puml
+LAYOUT_LEFT_RIGHT()
+
+title Order Processing Platform - Container Diagram (with Azure Service Bus and visual grouping)
+
+AddElementTag("integrationBus", $fontColor=$ELEMENT_FONT_COLOR, $bgColor="#335DA5", $shape=EightSidedShape(), $legendText="integration bus\n(eight sided)")
+
+Person(customer, "Customer", "Submits orders and receives error feedback")
+
+' Group external systems horizontally
+together {
+  System_Ext(externalWebsite, "External Website", "Customer order entry point; performs basic file validation")
+  ContainerDb_Ext(externalDB, "External Database", "", "Stores order metadata temporarily after submission", $tags="db")
+}
+
+System_Boundary(s1, "Order Processing Platform") {
+  ' Place Azure Bus in the center between external and internal
+  Container(azureBus, "Azure Service Bus", "Azure Service Bus", "Secure message interface between external site and internal modules", $tags="integrationBus")
+
+  ' Group core processing on the left
+  together {
+    Container(orderProcessing, "Order Processing Module", "Microsoft Azure", "Analyzes uploaded documents using AI to detect errors")
+    ContainerDb(orderDB, "Order DB", "Azure Storage", "Stores processed order and document data", $tags="db")
+  }
+
+  ' Group error handling on the right
+  together {
+    Container(errorHandling, "Error Handling Module", "Azure Logic Apps & Azure Functions", "Applies validation rules and manages error forwarding")
+    ContainerDb(errorDB, "Error DB", "Azure Storage", "Stores validation outcomes and tracking tokens", $tags="db")
+  }
+
+  ' Place interfaces centrally
+  together {
+    Container(salesforce, "Customer Relation System - Salesforce", "Salesforce", "Manages internal tickets and communicates with customers")
+    Container(aemInterface, "Adobe Experience Management Website", "Adobe Experience Manager", "Provides error visibility and correction submission via token")
+  }
+}
+
+' Relationships
+Rel(customer, externalWebsite, "Submits order with document", "HTTPS")
+Rel(externalWebsite, externalDB, "Stores order metadata", "Azure SDK/HTTPS")
+Rel(externalWebsite, azureBus, "Sends document for processing", "HTTPS/JSON")
+
+Rel(azureBus, orderProcessing, "Forwards document", "AMQP/HTTPS")
+Rel(orderProcessing, orderDB, "Reads/writes order and document data", "Azure SDK")
+Rel(orderProcessing, errorHandling, "Passes classified error data", "HTTPS/JSON")
+
+Rel(errorHandling, errorDB, "Stores validation errors and token IDs", "Azure SDK")
+Rel(errorHandling, salesforce, "Sends validation results and tracking token", "HTTPS/REST")
+
+Rel(aemInterface, errorHandling, "Reads error data for token-based display", "HTTPS/REST")
+Rel(aemInterface, salesforce, "Submits corrections and support requests", "HTTPS/REST")
+Rel(customer, aemInterface, "Views errors and submits corrections using token", "HTTPS")
+Rel(salesforce, customer, "Sends ticket updates and status notifications", "Email/HTTPS")
+
+@enduml
+
+
+### Component Diagram PlantUML
+' =========================
+' C4 Component Diagram: Error Handling Module (Bidirectional & Optimized)
+' =========================
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+' !include C4_Component.puml
+LAYOUT_LEFT_RIGHT()
+
+title Error Handling Module - Component Diagram (with Responses)
+
+AddElementTag("integrationBus", $fontColor=$ELEMENT_FONT_COLOR, $bgColor="#335DA5", $shape=EightSidedShape(), $legendText="integration bus\n(eight sided)")
+
+' External systems grouped
+together {
+  System_Ext(orderProcessing, "Order Processing Module", "Provides classified error payloads")
+  System_Ext(aem, "AEM Website (React)", "Displays error data and enables user input")
+  System_Ext(salesforce, "Salesforce", "Receives support cases")
+}
+
+Component(azureBus, "Azure Service Bus", "Enterprise Service Bus", "Message interface", $tags="integrationBus")
+
+' Internal boundary
+Container_Boundary(c1, "Error Handling Module") {
+  Component(tokenLogicApp, "Token Generator", "Azure Logic App", "Generates a unique Token ID")
+  Component(urlLogicApp, "Country URL Builder", "Azure Logic App", "Combines Token ID with country-specific URL")
+  Component(dataCollector, "Data Collector", "Azure Logic App", "Forwards data to storage and Salesforce")
+  Component(excelWatcher, "Excel Sync Handler", "Azure Logic App", "Listens for changes to the Excel config")
+  Component(excelAutomation, "Excel Upload Automation", "Excel Script", "Maintains localization Excel file")
+
+  ContainerDb(blobExcel, "Excel File Storage", "Azure Blob Storage", "Holds uploaded Excel file")
+  ContainerDb(tableStorage, "Error Data Table", "Azure Table Storage", "Central storage for token-based error data")
+
+  Component(sfForwarder, "Salesforce Forwarder", "Azure Logic App", "Sends structured data asynchronously")
+}
+
+Component(queryFunction, "Token Query Function", "Azure Function", "Serves token-based data to frontend")
+
+' Request/response and one-way flows
+Rel(orderProcessing, azureBus, "Pushes error data", "HTTPS/JSON")
+Rel(azureBus, tokenLogicApp, "Delivers error record", "AMQP")
+
+Rel(tokenLogicApp, urlLogicApp, "Sends Token ID", "HTTPS/JSON")
+Rel(urlLogicApp, dataCollector, "Sends enriched data", "HTTPS/JSON")
+Rel(dataCollector, sfForwarder, "Prepares payload", "HTTPS/JSON")
+Rel(dataCollector, tableStorage, "Stores tokenized record")
+Rel(dataCollector, blobExcel, "Reads config")
+
+Rel(sfForwarder, azureBus, "Pushes case", "HTTPS/JSON")
+Rel(azureBus, salesforce, "Delivers case", "HTTPS")
+
+Rel(aem, azureBus, "Requests token info", "HTTPS/JSON")
+Rel(azureBus, queryFunction, "Invokes query", "HTTPS")
+Rel(queryFunction, azureBus, "Returns error data", "HTTPS/JSON")
+Rel(azureBus, aem, "Delivers response", "HTTPS/JSON")
+
+Rel(queryFunction, tableStorage, "Fetches data")
+
+Rel(excelAutomation, excelWatcher, "Sends file update", "HTTPS/JSON")
+Rel(excelWatcher, blobExcel, "Updates Excel data")
+Rel(excelWatcher, tableStorage, "Syncs localized values")
+
+@enduml
+
+
+### Code Diagram PlantUML
 
