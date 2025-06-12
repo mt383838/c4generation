@@ -71,9 +71,6 @@ These combined evaluations offer both **depth (expert benchmarking)** and **brea
 ## 📁 **Repository Structure**
 
 ```bash
-📂 /diagrams          # C4 diagrams (manual + generated)
-📂 /evaluation        # Expert ratings, survey results, visualizations
-📂 /literature        # Systematic Literature Review sources
-📂 /prompts           # Prompt engineering strategies and examples
-📜 thesis.pdf         # Final thesis document (if public)
+📂 /evaluation        # C4 diagrams (manual + generated) + Expert ratings, survey results, visualizations
+📂 /Model generation  # How the GPT model was trained
 📝 README.md          # This file
